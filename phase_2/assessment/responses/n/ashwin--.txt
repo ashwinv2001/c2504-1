@@ -1,0 +1,1753 @@
+MedicationScheduleWindow.xaml.cs
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace MdiAppProject
+{
+    public class Medication1
+    {
+        public string Name { get; set; }
+        public DateTime DoseTime { get; set; }
+        public string DoseStatus { get; set; } // Ensure this is used consistently
+
+        public ICommand MarkTakenCommand { get; }
+        public ICommand MarkMissedCommand { get; }
+
+        public Medication1()
+        {
+            MarkTakenCommand = new RelayCommand1(MarkTaken);
+            MarkMissedCommand = new RelayCommand1(MarkMissed);
+        }
+
+        private void MarkTaken(object parameter)
+        {
+            DoseStatus = "Taken";
+        }
+       
+        
+
+        private void MarkMissed(object parameter)
+        {
+            DoseStatus = "Missed";
+        }
+    }
+
+    public partial class MedicationScheduleWindow : Window
+    {
+        public ObservableCollection<Medication1> Medications { get; set; }
+
+        public MedicationScheduleWindow()
+        {
+            InitializeComponent(); // Ensure this is called to initialize UI components
+
+            Medications = new ObservableCollection<Medication1>
+            {
+                new Medication1 { Name = "Medication A", DoseTime = DateTime.Now.AddHours(1), DoseStatus = "Upcoming" },
+                new Medication1 { Name = "Medication B", DoseTime = DateTime.Now.AddHours(-1), DoseStatus = "Missed" },
+                new Medication1 { Name = "Medication C", DoseTime = DateTime.Now, DoseStatus = "Taken" }
+            };
+            DataContext = this;
+        }
+    }
+
+    public class RelayCommand1 : ICommand
+    {
+        private readonly Action<object> _execute; // Ensure this matches your usage
+        private readonly Func<bool> _canExecute;
+
+        public RelayCommand1(Action<object> execute, Func<bool> canExecute = null)
+        {
+            _execute = execute;
+            _canExecute = canExecute;
+        }
+
+        public bool CanExecute(object parameter) => _canExecute == null || _canExecute();
+        public void Execute(object parameter) => _execute(parameter); // Ensure this can accept parameters
+
+        public event EventHandler CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
+    }
+}
+MedicationScheduleWindow.xaml
+<Window x:Class="MdiAppProject.MedicationScheduleWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Medication Schedule" Height="400" Width="775">
+    <Grid>
+        <ListView ItemsSource="{Binding Medications}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="200" />
+                    <GridViewColumn Header="Dose Time" DisplayMemberBinding="{Binding DoseTime}" Width="200" />
+                    <GridViewColumn Header="Status" DisplayMemberBinding="{Binding DoseStatus}" Width="200" />
+                  
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </Grid>
+</Window>
+
+AdherenceTrackingWindow.xaml
+<Window x:Class="MdiAppProject.AdherenceTrackingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+		xmlns:liveCharts="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        mc:Ignorable="d"
+        Title="AdherenceTrackingWindow" Height="450" Width="800">
+	<Grid>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="*"/>
+			<ColumnDefinition Width="*"/>
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="359*"/>
+			<RowDefinition Height="75*"/>
+		</Grid.RowDefinitions>
+
+		<!-- Visual Adherence Report -->
+		<liveCharts:CartesianChart Grid.Column="0" Grid.Row="0"
+                                   
+                                   LegendLocation="Bottom"
+                                   Zoom="Xy"
+                                   Pan="Xy" Margin="0,10,0,4">
+
+			<liveCharts:CartesianChart.AxisX>
+				<liveCharts:Axis Title="Time"
+                     Labels="{Binding AdherenceDataLabels, StringFormat={}{0:MMMM yyyy}}" />
+			</liveCharts:CartesianChart.AxisX>
+			<liveCharts:CartesianChart.AxisY>
+				<liveCharts:Axis Title="Adherence Percentage (%)"
+                     LabelFormatter="{Binding AdherencePercentageFormatter}" />
+			</liveCharts:CartesianChart.AxisY>
+		</liveCharts:CartesianChart>
+
+		<!-- History of Missed or Delayed Doses -->
+		<DataGrid Grid.Column="1" Grid.Row="0"
+                   ItemsSource="{Binding MissedDoses}"
+                   AutoGenerateColumns="False" Margin="10,10,20,0">
+			<DataGrid.Columns>
+				<DataGridTextColumn Header="Date" Binding="{Binding Date}"/>
+				<DataGridTextColumn Header="Dose" Binding="{Binding Dose}"/>
+				<DataGridTextColumn Header="Reason" Binding="{Binding Reason}"/>
+			</DataGrid.Columns>
+		</DataGrid>
+	</Grid>
+</Window>
+App.config
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <configSections>
+    <!-- For more information on Entity Framework configuration, visit http://go.microsoft.com/fwlink/?LinkID=237468 -->
+    <section name="entityFramework" type="System.Data.Entity.Internal.ConfigFile.EntityFrameworkSection, EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" requirePermission="false" />
+  </configSections>
+  <startup>
+    <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.7.2" />
+  </startup>
+  <connectionStrings>
+    <add name="MedicationScheduleEntities" connectionString="metadata=res://*/MedicationScheduleModel.csdl|res://*/MedicationScheduleModel.ssdl|res://*/MedicationScheduleModel.msl;provider=System.Data.SqlClient;provider connection string='data source=(LocalDB)\MSSQLLocalDB;attachdbfilename=&quot;C:\Users\2021455\AppData\Local\Microsoft\Microsoft SQL Server Local DB\Instances\MSSQLLocalDB\MedicationSchedule.mdf&quot;;integrated security=True;connect timeout=30;MultipleActiveResultSets=True;App=EntityFramework'" providerName="System.Data.EntityClient" />
+  </connectionStrings>
+  <entityFramework>
+    <defaultConnectionFactory type="System.Data.Entity.Infrastructure.LocalDbConnectionFactory, EntityFramework">
+      <parameters>
+        <parameter value="mssqllocaldb" />
+      </parameters>
+    </defaultConnectionFactory>
+    <providers>
+      <provider invariantName="System.Data.SqlClient" type="System.Data.Entity.SqlServer.SqlProviderServices, EntityFramework.SqlServer" />
+    </providers>
+  </entityFramework>
+</configuration>
+App.xaml
+<Application x:Class="MdiAppProject.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MdiAppProject"
+             StartupUri="MedicationScheduleWindow.xaml">
+    
+    <Application.Resources>
+        
+		<ControlTemplate x:Key="WindowTemplate" TargetType="Window">
+			<Grid>
+				<Image Source="/docSys.jpeg" Opacity="0.5" Stretch="Fill" />
+				<ContentPresenter />
+			</Grid>
+		</ControlTemplate>
+
+
+    </Application.Resources>
+    
+</Application>
+CheckInWindow.xaml
+<Window x:Class="MdiAppProject.CheckInWindow" 
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="CheckInWindow" Height="450" Width="800">
+
+
+    <Grid Margin="20">
+        <ListView ItemsSource="{Binding Medications}" Margin="0,0,0,100">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Medication Name" DisplayMemberBinding="{Binding Name}" Width="200"/>
+                    <GridViewColumn Header="Status" DisplayMemberBinding="{Binding DoseStatus}" Width="100"/>
+                    <GridViewColumn Header="Actions" Width="200">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Mark as Taken" Command="{Binding MarkTakenCommand}" CommandParameter="{Binding}" Margin="5"/>
+                                    <Button Content="Mark as Missed" Command="{Binding MarkMissedCommand}" CommandParameter="{Binding}" Margin="5"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <TextBox Width="400" Height="100" 
+                 VerticalAlignment="Bottom" 
+                 Text="{Binding SideEffectsReport, UpdateSourceTrigger=PropertyChanged}" 
+                 Margin="0,0,0,10"/>
+
+        <Button Content="Report Side Effects" Command="{Binding ReportSideEffectsCommand}" 
+                Width="150" Height="30" 
+                VerticalAlignment="Bottom" Margin="410,0,0,10"/>
+    </Grid>
+</Window>
+CheckInWindow.xaml.cs
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace MdiAppProject
+{
+    public class Medication2
+    {
+        public string Name { get; set; }
+        public string DoseStatus { get; set; } // To store the status of the medication
+        public ICommand MarkTakenCommand { get; }
+        public ICommand MarkMissedCommand { get; }
+
+        public Medication2()
+        {
+            MarkTakenCommand = new RelayCommand2(MarkTaken);
+            MarkMissedCommand = new RelayCommand2(MarkMissed);
+        }
+
+        private void MarkTaken(object parameter)
+        {
+            DoseStatus = "Taken"; // Update the status when marked as taken
+        }
+
+        private void MarkMissed(object parameter)
+        {
+            DoseStatus = "Missed"; // Update the status when marked as missed
+        }
+    }
+
+    public class CheckInViewModel
+    {
+        public ObservableCollection<Medication2> Medications { get; set; }
+        public string SideEffectsReport { get; set; }
+        public ICommand ReportSideEffectsCommand { get; }
+
+        public CheckInViewModel()
+        {
+            Medications = new ObservableCollection<Medication2>
+            {
+                new Medication2 { Name = "Medication A", DoseStatus = "Upcoming" },
+                new Medication2 { Name = "Medication B", DoseStatus = "Missed" },
+                new Medication2 { Name = "Medication C", DoseStatus = "Taken" }
+            };
+
+            ReportSideEffectsCommand = new RelayCommand2(ReportSideEffects);
+        }
+
+        private void ReportSideEffects(object parameter)
+        {
+            // Handle side effects reporting (e.g., save to a database or display a message)
+            MessageBox.Show($"Reported side effects/issues: {SideEffectsReport}", "Side Effects Reported", MessageBoxButton.OK, MessageBoxImage.Information);
+            SideEffectsReport = string.Empty; // Clear the report after submission
+        }
+    }
+
+    public partial class CheckInWindow : Window
+    {
+        public CheckInWindow()
+        {
+            InitializeComponent();
+            DataContext = new CheckInViewModel(); // Set the DataContext to the ViewModel
+        }
+    }
+
+    public class RelayCommand2 : ICommand
+    {
+        private readonly Action<object> _execute;
+        private readonly Func<bool> _canExecute;
+
+        public RelayCommand2(Action<object> execute, Func<bool> canExecute = null)
+        {
+            _execute = execute;
+            _canExecute = canExecute;
+        }
+
+        public bool CanExecute(object parameter) => _canExecute == null || _canExecute();
+        public void Execute(object parameter) => _execute(parameter);
+        public event EventHandler CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
+    }
+}
+DashboardWindow.xaml
+<Window x:Class="MdiAppProject.DashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="Dashboard" Height="450" Width="800" Closed="Window_Closed" Closing="Window_Closing">
+	<DockPanel>
+		<!--Navigation Bar-->
+		<StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Background="LightBlue" Height="40" >
+			<Button x:Name="btnMedicationSchedule" Content="Medication Schedule" Margin="1" Padding="5" FontSize="14" Command="{Binding NavToMedicationScheduleCommand}" Click="btnMedicationSchedule_Click"/>
+			<Button x:Name="btnAdherenceTracking" Content="Adherence Tracking" Margin="1" Padding="5" FontSize="14" Click="btnAdherenceTracking_Click"  ></Button>
+			<Button x:Name="btnReminders" Content="Reminders" Margin="1" Padding="5" FontSize="14" Command="{Binding NavToSettingsCommand}" Click="btnReminders_Click"/>
+			<Button x:Name="btnReports" Content="Reports" Margin="1" Padding="5" FontSize="14" Command="{Binding NavToReportsCommand}" Click="btnReports_Click"></Button>
+			<Button x:Name="btnProfile" Content="Profile" Margin="1" Padding="5" FontSize="14" Command="{Binding NavToProfileCommand}" Click="btnProfile_Click"></Button>
+			<Button x:Name="btnSettings" Content="Settings" Margin="1" Padding="5" FontSize="14" Command="{Binding NavToSettingsCommand}" Click="btnSettings_Click"></Button>
+			<TextBlock x:Name="lblPatientName" Text="PatientName     " TextAlignment="Right"   VerticalAlignment="Center" Width="190" FontSize="14"></TextBlock>
+			<Button x:Name="btnLogOut" Content="Log out" Margin="1" Padding="5" FontSize="14" Click="btnLogOut_Click"></Button>
+		</StackPanel>
+
+		<!--Main Content Area-->
+		<Grid Margin="10">
+			<!--Medication Overview Section-->
+			<GroupBox Header="Today's Medication Overview" Margin="10,10,10,0" VerticalAlignment="Top" Height="103" FontSize="16" FontFamily="Verdana" FontWeight="Bold">
+				<DataGrid x:Name="medicationDataGrid" AutoGenerateColumns="False" CanUserAddRows="False" ItemsSource="{Binding Medications}" FontWeight="Normal" FontSize="14">
+					<DataGrid.Columns>
+						<DataGridTextColumn Header="Medication Name" Width="170" Binding="{Binding MedicationName}"></DataGridTextColumn>
+						<DataGridTextColumn Header="Dosage" Width="80" Binding="{Binding Dosage}"></DataGridTextColumn>
+						<DataGridTextColumn Header="Scheduled Time" Width="180" Binding="{Binding ScheduledTime}"></DataGridTextColumn>
+						<DataGridTextColumn Header="Status" Width="100" Binding="{Binding Status}"></DataGridTextColumn>
+						<DataGridTemplateColumn Header="Action" Width="120">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<Button Content="Mark as Taken" Command="{Binding MarkAsTakenCommand}" CommandParameter="{Binding}" IsEnabled="{Binding CanMarkAsTaken}"></Button>
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+					</DataGrid.Columns>
+				</DataGrid>
+			</GroupBox>
+
+			<!--Adherance Summary Section-->
+			<GroupBox Header="Adherence Summary" Margin="10,0,10,0" VerticalAlignment="Center" FontFamily="Verdana" FontSize="16" FontWeight="Bold" Height="104">
+				<StackPanel>
+					<ProgressBar Value="{Binding AdherancePercentage}" Maximum="100" Height="20"></ProgressBar>
+					<TextBlock Text="{Binding AdheranceText}"></TextBlock>
+				</StackPanel>
+			</GroupBox>
+
+			<!--Notifications Section-->
+			<GroupBox Header="Reminders and Notifications" VerticalAlignment="Top" Height="108" Margin="0,266,0,0" FontSize="16" FontFamily="Verdana" FontWeight="Bold">
+				<ListBox x:Name="lstReminders" ItemsSource="{Binding Reminders}">
+					<ListBox.ItemTemplate>
+						<DataTemplate>
+							<TextBlock Text="{Binding Message}"/>
+						</DataTemplate>
+					</ListBox.ItemTemplate>
+				</ListBox>
+			</GroupBox>
+		</Grid>
+
+	</DockPanel>
+</Window>
+DashboardWindow.xaml.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace MdiAppProject
+{
+	/// <summary>
+	/// Interaction logic for DashboardWindow.xaml
+	/// </summary>
+	public partial class DashboardWindow : Window
+	{
+		public DashboardWindow()
+		{
+			InitializeComponent();
+			DataContext = new MdtViewModel();
+		}
+
+		private void btnLogOut_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.loginWindow.Show();
+		}
+
+		private void btnMedicationSchedule_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.medicationScheduleWindow.ShowDialog();
+		}
+
+		private void btnAdheranceTracking_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.adheranceTrackingWindow.ShowDialog();
+		}
+
+		private void btnReports_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.reportsWindow.ShowDialog();
+		}
+
+		private void btnProfile_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.patientProfileWindow.ShowDialog();
+		}
+
+		private void btnSettings_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.settingsWindow.ShowDialog();
+		}
+
+		private void btnReminders_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.remindersAndNotificationsWindow.ShowDialog();
+		}
+
+		private void Window_Closed(object sender, EventArgs e)
+		{
+			Application.Current.Shutdown();
+		}
+
+		private void btnAdherenceTracking_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.adheranceTrackingWindow.ShowDialog();
+		}
+
+		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			e.Cancel=true;
+			this.Hide();
+		}
+	}
+}
+DoctorWindow.xaml
+<Window x:Class="MdiAppProject.DoctorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="DoctorWindow" Height="450" Width="800">
+	<Grid Margin="10">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="2*" />
+			<RowDefinition Height="3*" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<!-- Patient Adherence View -->
+		<GroupBox Header="Patient Adherence" FontWeight="Bold" Margin="5" Grid.Row="0">
+			<DataGrid x:Name="AdherenceDataGrid" AutoGenerateColumns="False">
+				<DataGrid.Columns>
+					<DataGridTextColumn Header="Medication" Binding="{Binding Medication}" Width="*"/>
+					<DataGridTextColumn Header="Dose" Binding="{Binding Dose}" Width="*"/>
+					<DataGridTextColumn Header="Adherence %" Binding="{Binding AdherencePercentage}" Width="*"/>
+				</DataGrid.Columns>
+			</DataGrid>
+		</GroupBox>
+
+		<!-- Modify Medication Schedules -->
+		<GroupBox Header="Modify Medication Schedule" FontWeight="Bold" Margin="5" Grid.Row="1">
+			<StackPanel>
+				<StackPanel Orientation="Horizontal" Margin="0,5">
+					<TextBlock Text="Medication:" Width="120" VerticalAlignment="Center"/>
+					<ComboBox x:Name="MedicationComboBox" Width="200"/>
+				</StackPanel>
+				<StackPanel Orientation="Horizontal" Margin="0,5">
+					<TextBlock Text="New Schedule:" Width="120" VerticalAlignment="Center"/>
+					<TextBox x:Name="NewScheduleTextBox" Width="200" />
+				</StackPanel>
+				<Button Content="Update Schedule" Width="120" Margin="0,10,0,0" HorizontalAlignment="Left"/>
+			</StackPanel>
+		</GroupBox>
+
+		<!-- Send Reminders/Messages -->
+		<GroupBox Header="Send Patient Reminders/Messages" FontWeight="Bold" Margin="5" Grid.Row="2">
+			<StackPanel>
+				<TextBox x:Name="MessageTextBox" Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AcceptsReturn="True"/>
+				<Button Content="Send Notification" Width="150" Margin="0,10,0,0" HorizontalAlignment="Left"/>
+			</StackPanel>
+		</GroupBox>
+	</Grid>
+</Window>
+FormConfig.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MdiAppProject
+{
+	public class FormConfig
+	{
+		public static SignUpWindow signUpWindow = null;
+		public static LoginWindow loginWindow = null;
+		public static DashboardWindow dashboardWindow = null;
+		public static AddMedicationWindow addMedicationWindow = null;
+		public static MedicationScheduleWindow medicationScheduleWindow = null;
+		public static AdherenceTrackingWindow adheranceTrackingWindow = null;
+		public static RemindersAndNotificationsWindow remindersAndNotificationsWindow = null;
+		public static CheckInWindow checkIn = null;
+		public static PatientProfileWindow patientProfileWindow = null;
+		public static DoctorWindow doctorWindow = null;
+		public static ReportsWindow reportsWindow = null;
+		public static SettingsWindow settingsWindow = null;
+
+
+
+
+		static FormConfig()
+		{
+			signUpWindow = new SignUpWindow();
+			loginWindow = new LoginWindow();
+			dashboardWindow = new DashboardWindow();
+			addMedicationWindow = new AddMedicationWindow();
+			medicationScheduleWindow = new MedicationScheduleWindow();
+			adheranceTrackingWindow = new AdherenceTrackingWindow();
+			remindersAndNotificationsWindow = new RemindersAndNotificationsWindow();
+			checkIn = new CheckInWindow();
+			patientProfileWindow = new PatientProfileWindow();
+			doctorWindow = new DoctorWindow();
+			reportsWindow = new ReportsWindow();
+			settingsWindow = new SettingsWindow();
+		}
+	}
+}
+LoginWindow.xaml
+<Window x:Class="MdiAppProject.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="Login Window" Height="450" Width="800"
+WindowStartupLocation="CenterScreen" Closed="Window_Closed">
+
+	<Canvas Background="Lavender">
+
+		<TextBlock x:Name="lblLoginPage" Text="Login" HorizontalAlignment="Left" FontSize="36" FontWeight="Bold" FontFamily="Verdana" Height="59" Canvas.Left="313" Canvas.Top="10"/>
+
+		<TextBlock x:Name="lblUsername" HorizontalAlignment="Left" Height="42" Margin="172,245,0,0" TextWrapping="Wrap" Text="Username" VerticalAlignment="Top" Width="130" FontSize="16" FontFamily="Verdana"/>
+		<TextBlock x:Name="lblPassword" HorizontalAlignment="Left" Height="42" Margin="172,306,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="130" FontSize="16" FontFamily="Verdana"><Run Text="Password"/><LineBreak/><Run/></TextBlock>
+		<TextBox x:Name="txtUserName" HorizontalAlignment="Left" Height="42" Margin="304,236,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="236" FontSize="16"/>
+		<PasswordBox x:Name="txtPassword" HorizontalAlignment="Left" Height="42" Margin="304,304,0,0" VerticalAlignment="Top" Width="236" FontSize="16"/>
+		<Image x:Name="imgUserIcon" HorizontalAlignment="Left" Height="129" VerticalAlignment="Top" Width="131" Source="/userLoginIcon.png" Canvas.Left="304" Canvas.Top="88">
+			<Image.OpacityMask>
+				<ImageBrush ImageSource="/LoginIcon.jpg" TileMode="None" Stretch="Uniform"/>
+			</Image.OpacityMask>
+		</Image>
+		<Button x:Name="btnLogin" Background="CadetBlue" Content="Login" HorizontalAlignment="Left" Height="35" VerticalAlignment="Top" Width="125" FontSize="16" FontFamily="Verdana" Foreground="White" Click="btnLogin_Click" Canvas.Left="277" Canvas.Top="367"/>
+		<TextBlock Height="23" Canvas.Left="497" TextWrapping="Wrap" Text="Don't have an Account?" Canvas.Top="389" Width="161" FontSize="14" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+		<Button x:Name="lblSignUp" Height="23" Content="Sign Up" Width="85" FontSize="14" FontFamily="Verdana" HorizontalAlignment="Left" Click="lblSignUp_Click" Canvas.Left="666" Canvas.Top="387" VerticalAlignment="Center"/>
+
+	</Canvas>
+</Window>
+LoginWindow.xaml.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+
+namespace MdiAppProject
+{
+	/// <summary>
+	/// Interaction logic for MainWindow.xaml
+	/// </summary>
+	public partial class LoginWindow : Window
+	{
+		public LoginWindow()
+		{
+			InitializeComponent();
+		}
+
+		private void lblSignUp_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.signUpWindow.Show();
+		}
+
+		private void Window_Closed(object sender, EventArgs e)
+		{
+			Application.Current.Shutdown();
+		}
+
+		private void btnLogin_Click(object sender, RoutedEventArgs e)
+		{
+			FormConfig.dashboardWindow.ShowDialog();
+		}
+	}
+}
+MdtViewModel.cs
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MdiAppProject
+{
+	public class MdtViewModel : INotifyPropertyChanged
+	{
+		//INotifyPropertyChanged implementation
+		public event PropertyChangedEventHandler PropertyChanged;
+		//Code handling Dashboard
+		public ObservableCollection<Medication>Medications {get; set; }
+	}
+}
+Medication.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace MdiAppProject
+{
+	public class Medication
+	{
+		public string MedicationName { get; set; }
+		public string Dosage { get; set; }
+		public DateTime ScheduledTime { get; set; }
+		public string Status { get; set; }
+		public bool CanMarkAsTaken { get; set; }
+		public ICommand MarkAsTakenCommand { get; set; }
+
+		public Medication()
+		{
+			MarkAsTakenCommand = new RelayCommand(MarkAsTaken);
+		}
+		private void MarkAsTaken(object parameter)
+		{
+			Status = "Taken";
+			CanMarkAsTaken = false;
+			//update datasource (db, etc.)
+		}
+	}
+}
+
+MedicationScheduleModel.Context.tt
+<#@ template language="C#" debug="false" hostspecific="true"#>
+<#@ include file="EF6.Utility.CS.ttinclude"#><#@
+ output extension=".cs"#><#
+
+const string inputFile = @"MedicationScheduleModel.edmx";
+var textTransform = DynamicTextTransformation.Create(this);
+var code = new CodeGenerationTools(this);
+var ef = new MetadataTools(this);
+var typeMapper = new TypeMapper(code, ef, textTransform.Errors);
+var loader = new EdmMetadataLoader(textTransform.Host, textTransform.Errors);
+var itemCollection = loader.CreateEdmItemCollection(inputFile);
+var modelNamespace = loader.GetModelNamespace(inputFile);
+var codeStringGenerator = new CodeStringGenerator(code, typeMapper, ef);
+
+var container = itemCollection.OfType<EntityContainer>().FirstOrDefault();
+if (container == null)
+{
+    return string.Empty;
+}
+#>
+//------------------------------------------------------------------------------
+// <auto-generated>
+// <#=CodeGenerationTools.GetResourceString("Template_GeneratedCodeCommentLine1")#>
+//
+// <#=CodeGenerationTools.GetResourceString("Template_GeneratedCodeCommentLine2")#>
+// <#=CodeGenerationTools.GetResourceString("Template_GeneratedCodeCommentLine3")#>
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+<#
+
+var codeNamespace = code.VsNamespaceSuggestion();
+if (!String.IsNullOrEmpty(codeNamespace))
+{
+#>
+namespace <#=code.EscapeNamespace(codeNamespace)#>
+{
+<#
+    PushIndent("    ");
+}
+
+#>
+using System;
+using System.Data.Entity;
+using System.Data.Entity.Infrastructure;
+<#
+if (container.FunctionImports.Any())
+{
+#>
+using System.Data.Entity.Core.Objects;
+using System.Linq;
+<#
+}
+#>
+
+<#=Accessibility.ForType(container)#> partial class <#=code.Escape(container)#> : DbContext
+{
+    public <#=code.Escape(container)#>()
+        : base("name=<#=container.Name#>")
+    {
+<#
+if (!loader.IsLazyLoadingEnabled(container))
+{
+#>
+        this.Configuration.LazyLoadingEnabled = false;
+<#
+}
+
+foreach (var entitySet in container.BaseEntitySets.OfType<EntitySet>())
+{
+    // Note: the DbSet members are defined below such that the getter and
+    // setter always have the same accessibility as the DbSet definition
+    if (Accessibility.ForReadOnlyProperty(entitySet) != "public")
+    {
+#>
+        <#=codeStringGenerator.DbSetInitializer(entitySet)#>
+<#
+    }
+}
+#>
+    }
+
+    protected override void OnModelCreating(DbModelBuilder modelBuilder)
+    {
+        throw new UnintentionalCodeFirstException();
+    }
+
+<#
+    foreach (var entitySet in container.BaseEntitySets.OfType<EntitySet>())
+    {
+#>
+    <#=codeStringGenerator.DbSet(entitySet)#>
+<#
+    }
+
+    foreach (var edmFunction in container.FunctionImports)
+    {
+        WriteFunctionImport(typeMapper, codeStringGenerator, edmFunction, modelNamespace, includeMergeOption: false);
+    }
+#>
+}
+<#
+
+if (!String.IsNullOrEmpty(codeNamespace))
+{
+    PopIndent();
+#>
+}
+<#
+}
+#>
+<#+
+
+private void WriteFunctionImport(TypeMapper typeMapper, CodeStringGenerator codeStringGenerator, EdmFunction edmFunction, string modelNamespace, bool includeMergeOption)
+{
+    if (typeMapper.IsComposable(edmFunction))
+    {
+#>
+
+    [DbFunction("<#=edmFunction.NamespaceName#>", "<#=edmFunction.Name#>")]
+    <#=codeStringGenerator.ComposableFunctionMethod(edmFunction, modelNamespace)#>
+    {
+<#+
+        codeStringGenerator.WriteFunctionParameters(edmFunction, WriteFunctionParameter);
+#>
+        <#=codeStringGenerator.ComposableCreateQuery(edmFunction, modelNamespace)#>
+    }
+<#+
+    }
+    else
+    {
+#>
+
+    <#=codeStringGenerator.FunctionMethod(edmFunction, modelNamespace, includeMergeOption)#>
+    {
+<#+
+        codeStringGenerator.WriteFunctionParameters(edmFunction, WriteFunctionParameter);
+#>
+        <#=codeStringGenerator.ExecuteFunction(edmFunction, modelNamespace, includeMergeOption)#>
+    }
+<#+
+        if (typeMapper.GenerateMergeOptionFunction(edmFunction, includeMergeOption))
+        {
+            WriteFunctionImport(typeMapper, codeStringGenerator, edmFunction, modelNamespace, includeMergeOption: true);
+        }
+    }
+}
+
+public void WriteFunctionParameter(string name, string isNotNull, string notNullInit, string nullInit)
+{
+#>
+        var <#=name#> = <#=isNotNull#> ?
+            <#=notNullInit#> :
+            <#=nullInit#>;
+
+<#+
+}
+
+public const string TemplateId = "CSharp_DbContext_Context_EF6";
+
+public class CodeStringGenerator
+{
+    private readonly CodeGenerationTools _code;
+    private readonly TypeMapper _typeMapper;
+    private readonly MetadataTools _ef;
+
+    public CodeStringGenerator(CodeGenerationTools code, TypeMapper typeMapper, MetadataTools ef)
+    {
+        ArgumentNotNull(code, "code");
+        ArgumentNotNull(typeMapper, "typeMapper");
+        ArgumentNotNull(ef, "ef");
+
+        _code = code;
+        _typeMapper = typeMapper;
+        _ef = ef;
+    }
+
+    public string Property(EdmProperty edmProperty)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} {1} {2} {{ {3}get; {4}set; }}",
+            Accessibility.ForProperty(edmProperty),
+            _typeMapper.GetTypeName(edmProperty.TypeUsage),
+            _code.Escape(edmProperty),
+            _code.SpaceAfter(Accessibility.ForGetter(edmProperty)),
+            _code.SpaceAfter(Accessibility.ForSetter(edmProperty)));
+    }
+
+    public string NavigationProperty(NavigationProperty navProp)
+    {
+        var endType = _typeMapper.GetTypeName(navProp.ToEndMember.GetEntityType());
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} {1} {2} {{ {3}get; {4}set; }}",
+            AccessibilityAndVirtual(Accessibility.ForNavigationProperty(navProp)),
+            navProp.ToEndMember.RelationshipMultiplicity == RelationshipMultiplicity.Many ? ("ICollection<" + endType + ">") : endType,
+            _code.Escape(navProp),
+            _code.SpaceAfter(Accessibility.ForGetter(navProp)),
+            _code.SpaceAfter(Accessibility.ForSetter(navProp)));
+    }
+    
+    public string AccessibilityAndVirtual(string accessibility)
+    {
+        return accessibility + (accessibility != "private" ? " virtual" : "");
+    }
+    
+    public string EntityClassOpening(EntityType entity)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} {1}partial class {2}{3}",
+            Accessibility.ForType(entity),
+            _code.SpaceAfter(_code.AbstractOption(entity)),
+            _code.Escape(entity),
+            _code.StringBefore(" : ", _typeMapper.GetTypeName(entity.BaseType)));
+    }
+    
+    public string EnumOpening(SimpleType enumType)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} enum {1} : {2}",
+            Accessibility.ForType(enumType),
+            _code.Escape(enumType),
+            _code.Escape(_typeMapper.UnderlyingClrType(enumType)));
+        }
+    
+    public void WriteFunctionParameters(EdmFunction edmFunction, Action<string, string, string, string> writeParameter)
+    {
+        var parameters = FunctionImportParameter.Create(edmFunction.Parameters, _code, _ef);
+        foreach (var parameter in parameters.Where(p => p.NeedsLocalVariable))
+        {
+            var isNotNull = parameter.IsNullableOfT ? parameter.FunctionParameterName + ".HasValue" : parameter.FunctionParameterName + " != null";
+            var notNullInit = "new ObjectParameter(\"" + parameter.EsqlParameterName + "\", " + parameter.FunctionParameterName + ")";
+            var nullInit = "new ObjectParameter(\"" + parameter.EsqlParameterName + "\", typeof(" + TypeMapper.FixNamespaces(parameter.RawClrTypeName) + "))";
+            writeParameter(parameter.LocalVariableName, isNotNull, notNullInit, nullInit);
+        }
+    }
+    
+    public string ComposableFunctionMethod(EdmFunction edmFunction, string modelNamespace)
+    {
+        var parameters = _typeMapper.GetParameters(edmFunction);
+        
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} IQueryable<{1}> {2}({3})",
+            AccessibilityAndVirtual(Accessibility.ForMethod(edmFunction)),
+            _typeMapper.GetTypeName(_typeMapper.GetReturnType(edmFunction), modelNamespace),
+            _code.Escape(edmFunction),
+            string.Join(", ", parameters.Select(p => TypeMapper.FixNamespaces(p.FunctionParameterType) + " " + p.FunctionParameterName).ToArray()));
+    }
+    
+    public string ComposableCreateQuery(EdmFunction edmFunction, string modelNamespace)
+    {
+        var parameters = _typeMapper.GetParameters(edmFunction);
+        
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "return ((IObjectContextAdapter)this).ObjectContext.CreateQuery<{0}>(\"[{1}].[{2}]({3})\"{4});",
+            _typeMapper.GetTypeName(_typeMapper.GetReturnType(edmFunction), modelNamespace),
+            edmFunction.NamespaceName,
+            edmFunction.Name,
+            string.Join(", ", parameters.Select(p => "@" + p.EsqlParameterName).ToArray()),
+            _code.StringBefore(", ", string.Join(", ", parameters.Select(p => p.ExecuteParameterName).ToArray())));
+    }
+    
+    public string FunctionMethod(EdmFunction edmFunction, string modelNamespace, bool includeMergeOption)
+    {
+        var parameters = _typeMapper.GetParameters(edmFunction);
+        var returnType = _typeMapper.GetReturnType(edmFunction);
+
+        var paramList = String.Join(", ", parameters.Select(p => TypeMapper.FixNamespaces(p.FunctionParameterType) + " " + p.FunctionParameterName).ToArray());
+        if (includeMergeOption)
+        {
+            paramList = _code.StringAfter(paramList, ", ") + "MergeOption mergeOption";
+        }
+
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} {1} {2}({3})",
+            AccessibilityAndVirtual(Accessibility.ForMethod(edmFunction)),
+            returnType == null ? "int" : "ObjectResult<" + _typeMapper.GetTypeName(returnType, modelNamespace) + ">",
+            _code.Escape(edmFunction),
+            paramList);
+    }
+    
+    public string ExecuteFunction(EdmFunction edmFunction, string modelNamespace, bool includeMergeOption)
+    {
+        var parameters = _typeMapper.GetParameters(edmFunction);
+        var returnType = _typeMapper.GetReturnType(edmFunction);
+
+        var callParams = _code.StringBefore(", ", String.Join(", ", parameters.Select(p => p.ExecuteParameterName).ToArray()));
+        if (includeMergeOption)
+        {
+            callParams = ", mergeOption" + callParams;
+        }
+        
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "return ((IObjectContextAdapter)this).ObjectContext.ExecuteFunction{0}(\"{1}\"{2});",
+            returnType == null ? "" : "<" + _typeMapper.GetTypeName(returnType, modelNamespace) + ">",
+            edmFunction.Name,
+            callParams);
+    }
+    
+    public string DbSet(EntitySet entitySet)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} virtual DbSet<{1}> {2} {{ get; set; }}",
+            Accessibility.ForReadOnlyProperty(entitySet),
+            _typeMapper.GetTypeName(entitySet.ElementType),
+            _code.Escape(entitySet));
+    }
+
+    public string DbSetInitializer(EntitySet entitySet)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} = Set<{1}>();",
+            _code.Escape(entitySet),
+            _typeMapper.GetTypeName(entitySet.ElementType));
+    }
+
+    public string UsingDirectives(bool inHeader, bool includeCollections = true)
+    {
+        return inHeader == string.IsNullOrEmpty(_code.VsNamespaceSuggestion())
+            ? string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}using System;{1}" +
+                "{2}",
+                inHeader ? Environment.NewLine : "",
+                includeCollections ? (Environment.NewLine + "using System.Collections.Generic;") : "",
+                inHeader ? "" : Environment.NewLine)
+            : "";
+    }
+}
+
+public class TypeMapper
+{
+    private const string ExternalTypeNameAttributeName = @"http://schemas.microsoft.com/ado/2006/04/codegeneration:ExternalTypeName";
+
+    private readonly System.Collections.IList _errors;
+    private readonly CodeGenerationTools _code;
+    private readonly MetadataTools _ef;
+
+    public static string FixNamespaces(string typeName)
+    {
+        return typeName.Replace("System.Data.Spatial.", "System.Data.Entity.Spatial.");
+    }
+
+    public TypeMapper(CodeGenerationTools code, MetadataTools ef, System.Collections.IList errors)
+    {
+        ArgumentNotNull(code, "code");
+        ArgumentNotNull(ef, "ef");
+        ArgumentNotNull(errors, "errors");
+
+        _code = code;
+        _ef = ef;
+        _errors = errors;
+    }
+
+    public string GetTypeName(TypeUsage typeUsage)
+    {
+        return typeUsage == null ? null : GetTypeName(typeUsage.EdmType, _ef.IsNullable(typeUsage), modelNamespace: null);
+    }
+
+    public string GetTypeName(EdmType edmType)
+    {
+        return GetTypeName(edmType, isNullable: null, modelNamespace: null);
+    }
+
+    public string GetTypeName(TypeUsage typeUsage, string modelNamespace)
+    {
+        return typeUsage == null ? null : GetTypeName(typeUsage.EdmType, _ef.IsNullable(typeUsage), modelNamespace);
+    }
+
+    public string GetTypeName(EdmType edmType, string modelNamespace)
+    {
+        return GetTypeName(edmType, isNullable: null, modelNamespace: modelNamespace);
+    }
+
+    public string GetTypeName(EdmType edmType, bool? isNullable, string modelNamespace)
+    {
+        if (edmType == null)
+        {
+            return null;
+        }
+
+        var collectionType = edmType as CollectionType;
+        if (collectionType != null)
+        {
+            return String.Format(CultureInfo.InvariantCulture, "ICollection<{0}>", GetTypeName(collectionType.TypeUsage, modelNamespace));
+        }
+
+        var typeName = _code.Escape(edmType.MetadataProperties
+                                .Where(p => p.Name == ExternalTypeNameAttributeName)
+                                .Select(p => (string)p.Value)
+                                .FirstOrDefault())
+            ?? (modelNamespace != null && edmType.NamespaceName != modelNamespace ?
+                _code.CreateFullName(_code.EscapeNamespace(edmType.NamespaceName), _code.Escape(edmType)) :
+                _code.Escape(edmType));
+
+        if (edmType is StructuralType)
+        {
+            return typeName;
+        }
+
+        if (edmType is SimpleType)
+        {
+            var clrType = UnderlyingClrType(edmType);
+            if (!IsEnumType(edmType))
+            {
+                typeName = _code.Escape(clrType);
+            }
+
+            typeName = FixNamespaces(typeName);
+
+            return clrType.IsValueType && isNullable == true ?
+                String.Format(CultureInfo.InvariantCulture, "Nullable<{0}>", typeName) :
+                typeName;
+        }
+
+        throw new ArgumentException("edmType");
+    }
+    
+    public Type UnderlyingClrType(EdmType edmType)
+    {
+        ArgumentNotNull(edmType, "edmType");
+
+        var primitiveType = edmType as PrimitiveType;
+        if (primitiveType != null)
+        {
+            return primitiveType.ClrEquivalentType;
+        }
+
+        if (IsEnumType(edmType))
+        {
+            return GetEnumUnderlyingType(edmType).ClrEquivalentType;
+        }
+
+        return typeof(object);
+    }
+    
+    public object GetEnumMemberValue(MetadataItem enumMember)
+    {
+        ArgumentNotNull(enumMember, "enumMember");
+        
+        var valueProperty = enumMember.GetType().GetProperty("Value");
+        return valueProperty == null ? null : valueProperty.GetValue(enumMember, null);
+    }
+    
+    public string GetEnumMemberName(MetadataItem enumMember)
+    {
+        ArgumentNotNull(enumMember, "enumMember");
+        
+        var nameProperty = enumMember.GetType().GetProperty("Name");
+        return nameProperty == null ? null : (string)nameProperty.GetValue(enumMember, null);
+    }
+
+    public System.Collections.IEnumerable GetEnumMembers(EdmType enumType)
+    {
+        ArgumentNotNull(enumType, "enumType");
+
+        var membersProperty = enumType.GetType().GetProperty("Members");
+        return membersProperty != null 
+            ? (System.Collections.IEnumerable)membersProperty.GetValue(enumType, null)
+            : Enumerable.Empty<MetadataItem>();
+    }
+    
+    public bool EnumIsFlags(EdmType enumType)
+    {
+        ArgumentNotNull(enumType, "enumType");
+        
+        var isFlagsProperty = enumType.GetType().GetProperty("IsFlags");
+        return isFlagsProperty != null && (bool)isFlagsProperty.GetValue(enumType, null);
+    }
+
+    public bool IsEnumType(GlobalItem edmType)
+    {
+        ArgumentNotNull(edmType, "edmType");
+
+        return edmType.GetType().Name == "EnumType";
+    }
+
+    public PrimitiveType GetEnumUnderlyingType(EdmType enumType)
+    {
+        ArgumentNotNull(enumType, "enumType");
+
+        return (PrimitiveType)enumType.GetType().GetProperty("UnderlyingType").GetValue(enumType, null);
+    }
+
+    public string CreateLiteral(object value)
+    {
+        if (value == null || value.GetType() != typeof(TimeSpan))
+        {
+            return _code.CreateLiteral(value);
+        }
+
+        return string.Format(CultureInfo.InvariantCulture, "new TimeSpan({0})", ((TimeSpan)value).Ticks);
+    }
+    
+    public bool VerifyCaseInsensitiveTypeUniqueness(IEnumerable<string> types, string sourceFile)
+    {
+        ArgumentNotNull(types, "types");
+        ArgumentNotNull(sourceFile, "sourceFile");
+        
+        var hash = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+        if (types.Any(item => !hash.Add(item)))
+        {
+            _errors.Add(
+                new CompilerError(sourceFile, -1, -1, "6023",
+                    String.Format(CultureInfo.CurrentCulture, CodeGenerationTools.GetResourceString("Template_CaseInsensitiveTypeConflict"))));
+            return false;
+        }
+        return true;
+    }
+    
+    public IEnumerable<SimpleType> GetEnumItemsToGenerate(IEnumerable<GlobalItem> itemCollection)
+    {
+        return GetItemsToGenerate<SimpleType>(itemCollection)
+            .Where(e => IsEnumType(e));
+    }
+    
+    public IEnumerable<T> GetItemsToGenerate<T>(IEnumerable<GlobalItem> itemCollection) where T: EdmType
+    {
+        return itemCollection
+            .OfType<T>()
+            .Where(i => !i.MetadataProperties.Any(p => p.Name == ExternalTypeNameAttributeName))
+            .OrderBy(i => i.Name);
+    }
+
+    public IEnumerable<string> GetAllGlobalItems(IEnumerable<GlobalItem> itemCollection)
+    {
+        return itemCollection
+            .Where(i => i is EntityType || i is ComplexType || i is EntityContainer || IsEnumType(i))
+            .Select(g => GetGlobalItemName(g));
+    }
+
+    public string GetGlobalItemName(GlobalItem item)
+    {
+        if (item is EdmType)
+        {
+            return ((EdmType)item).Name;
+        }
+        else
+        {
+            return ((EntityContainer)item).Name;
+        }
+    }
+
+    public IEnumerable<EdmProperty> GetSimpleProperties(EntityType type)
+    {
+        return type.Properties.Where(p => p.TypeUsage.EdmType is SimpleType && p.DeclaringType == type);
+    }
+    
+    public IEnumerable<EdmProperty> GetSimpleProperties(ComplexType type)
+    {
+        return type.Properties.Where(p => p.TypeUsage.EdmType is SimpleType && p.DeclaringType == type);
+    }
+    
+    public IEnumerable<EdmProperty> GetComplexProperties(EntityType type)
+    {
+        return type.Properties.Where(p => p.TypeUsage.EdmType is ComplexType && p.DeclaringType == type);
+    }
+    
+    public IEnumerable<EdmProperty> GetComplexProperties(ComplexType type)
+    {
+        return type.Properties.Where(p => p.TypeUsage.EdmType is ComplexType && p.DeclaringType == type);
+    }
+
+    public IEnumerable<EdmProperty> GetPropertiesWithDefaultValues(EntityType type)
+    {
+        return type.Properties.Where(p => p.TypeUsage.EdmType is SimpleType && p.DeclaringType == type && p.DefaultValue != null);
+    }
+    
+    public IEnumerable<EdmProperty> GetPropertiesWithDefaultValues(ComplexType type)
+    {
+        return type.Properties.Where(p => p.TypeUsage.EdmType is SimpleType && p.DeclaringType == type && p.DefaultValue != null);
+    }
+
+    public IEnumerable<NavigationProperty> GetNavigationProperties(EntityType type)
+    {
+        return type.NavigationProperties.Where(np => np.DeclaringType == type);
+    }
+    
+    public IEnumerable<NavigationProperty> GetCollectionNavigationProperties(EntityType type)
+    {
+        return type.NavigationProperties.Where(np => np.DeclaringType == type && np.ToEndMember.RelationshipMultiplicity == RelationshipMultiplicity.Many);
+    }
+    
+    public FunctionParameter GetReturnParameter(EdmFunction edmFunction)
+    {
+        ArgumentNotNull(edmFunction, "edmFunction");
+
+        var returnParamsProperty = edmFunction.GetType().GetProperty("ReturnParameters");
+        return returnParamsProperty == null
+            ? edmFunction.ReturnParameter
+            : ((IEnumerable<FunctionParameter>)returnParamsProperty.GetValue(edmFunction, null)).FirstOrDefault();
+    }
+
+    public bool IsComposable(EdmFunction edmFunction)
+    {
+        ArgumentNotNull(edmFunction, "edmFunction");
+
+        var isComposableProperty = edmFunction.GetType().GetProperty("IsComposableAttribute");
+        return isComposableProperty != null && (bool)isComposableProperty.GetValue(edmFunction, null);
+    }
+
+    public IEnumerable<FunctionImportParameter> GetParameters(EdmFunction edmFunction)
+    {
+        return FunctionImportParameter.Create(edmFunction.Parameters, _code, _ef);
+    }
+
+    public TypeUsage GetReturnType(EdmFunction edmFunction)
+    {
+        var returnParam = GetReturnParameter(edmFunction);
+        return returnParam == null ? null : _ef.GetElementType(returnParam.TypeUsage);
+    }
+    
+    public bool GenerateMergeOptionFunction(EdmFunction edmFunction, bool includeMergeOption)
+    {
+        var returnType = GetReturnType(edmFunction);
+        return !includeMergeOption && returnType != null && returnType.EdmType.BuiltInTypeKind == BuiltInTypeKind.EntityType;
+    }
+}
+
+public static void ArgumentNotNull<T>(T arg, string name) where T : class
+{
+    if (arg == null)
+    {
+        throw new ArgumentNullException(name);
+    }
+}
+#>
+MedicationScheduleModel.Context.cs
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated from a template.
+//
+//     Manual changes to this file may cause unexpected behavior in your application.
+//     Manual changes to this file will be overwritten if the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+namespace MdiAppProject
+{
+    using System;
+    using System.Data.Entity;
+    using System.Data.Entity.Infrastructure;
+    
+    public partial class MedicationScheduleEntities : DbContext
+    {
+        public MedicationScheduleEntities()
+            : base("name=MedicationScheduleEntities")
+        {
+        }
+    
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            throw new UnintentionalCodeFirstException();
+        }
+    
+        public virtual DbSet<MedicationSchedule> MedicationSchedules { get; set; }
+    }
+}
+PatientProfileWindow.xaml
+<Window x:Class="MdiAppProject.PatientProfileWindow" 
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="PatientProfileWindow" Height="1000" Width="1100">
+	<Grid>
+
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="*"/>
+
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="*"/>
+			<ColumnDefinition Width="*"/>
+		</Grid.ColumnDefinitions>
+
+		<TextBlock TextAlignment ="Center" TextWrapping="Wrap" Text="PATIENT PROFILE " 
+                   Width="799" Height="62" FontSize="36" FontWeight="Bold" 
+                   Background="Wheat" FontFamily="Georgia" Grid.Row="0" Grid.ColumnSpan="2" VerticalAlignment="Center" IsEnabled="False"/>
+
+		<TextBlock x:Name="lblName" TextWrapping="Wrap" Text="Name" 
+                   FontSize="18" Foreground="Black" 
+                   Grid.Row="1" Grid.Column="0" Margin="5" VerticalAlignment="Center" FontWeight="Bold" HorizontalAlignment="Center"/>
+		<TextBox x:Name="txtName" TextWrapping="Wrap" 
+                 Width="300" FontSize="18" Background="#FFDACACA" 
+                 Grid.Row="1" Grid.Column="1"  VerticalAlignment="Center" Height="28" HorizontalAlignment="Left"/>
+
+		<TextBlock x:Name="lblDateofBirth" TextWrapping="Wrap" 
+                   Text="Date of Birth" FontSize="18" 
+                   Foreground="Black" Grid.Row="2" Grid.Column="0" Margin="5" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+		<DatePicker Grid.Row="2" Grid.Column="1" Margin="5" 
+                     Width="300" Height="28" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+
+		<TextBlock x:Name="lblMedicalConditions" TextWrapping="Wrap" 
+                   Text="Medical Conditions" FontSize="18" HorizontalAlignment="Center" 
+                   Foreground="Black" Grid.Row="3" Grid.Column="0" Margin="5" VerticalAlignment="Center" FontWeight="Bold"/>
+		<TextBox x:Name="txtMedicalConditions" TextWrapping="Wrap" 
+                 Width="300" FontSize="18" Background="#FFDACACA" 
+                 Grid.Row="3" Grid.Column="1" Margin="5" Height="28" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+
+		<TextBlock x:Name="lblAllergies" TextWrapping="Wrap" 
+                   Text="Allergies" FontSize="18" HorizontalAlignment="Center" 
+                   Foreground="Black" Grid.Row="4" Grid.Column="0" Margin="5" VerticalAlignment="Center" FontWeight="Bold"/>
+		<TextBox x:Name="txtAllergies" TextWrapping="Wrap" 
+                 Width="300" FontSize="18" Background="#FFDACACA" 
+                 Grid.Row="4" Grid.Column="1" Margin="5" Height="28" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+
+		<TextBlock x:Name="lblEmergencyContacts" TextWrapping="Wrap" 
+                   Text="Emergency Contacts" FontSize="18" HorizontalAlignment="Center" 
+                   Foreground="Black" Grid.Row="5" Grid.Column="0" Margin="5" VerticalAlignment="Center" FontWeight="Bold"/>
+		<TextBox x:Name="txtEmergecyContacts" TextWrapping="Wrap" 
+                 Width="300" FontSize="18" Background="#FFDACACA" 
+                 Grid.Row="5" Grid.Column="1" Margin="5" Height="28" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+
+		<Button x:Name="btnSave" Content="Save Profile" 
+                HorizontalAlignment="Left" VerticalAlignment="Center" 
+                Width="145" Height="34" FontWeight="Bold" FontSize="18" 
+                BorderBrush="Brown" Background="CadetBlue" Foreground="White"
+                Grid.Row="6" Grid.Column="1" Margin="5,0,0,0"/>
+
+		<Border  
+                 VerticalAlignment="Top">
+			<Border.Background>
+				<ImageBrush Stretch="Fill"/>
+			</Border.Background>
+		</Border>
+	</Grid>
+</Window>
+
+PatientProfileWindow.xaml.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace MdiAppProject
+{
+	/// <summary>
+	/// Interaction logic for PatientProfileWindow.xaml
+	/// </summary>
+	public partial class PatientProfileWindow : Window
+	{
+		public PatientProfileWindow()
+		{
+			InitializeComponent();
+		}
+	}
+}
+RelayCommand.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace MdiAppProject
+{
+	public class RelayCommand : ICommand
+	{
+		private readonly Action<object> _execute;
+		private readonly Func<object,bool> _canExecute;
+
+		public RelayCommand(Action<object> execute, Func<object, bool> canExecute = null)
+		{
+			_execute = execute;
+			_canExecute = canExecute;
+		}
+
+		//
+		public bool CanExecute(object parameter)
+		{
+			return _canExecute == null || _canExecute(parameter);
+		}
+
+		public void Execute(object parameter)
+		{
+			_execute(parameter);
+		}
+		//
+
+		public event EventHandler CanExecuteChanged
+		{
+			add { CommandManager.RequerySuggested += value; }
+			remove { CommandManager.RequerySuggested -= value; }
+		}
+	}
+
+}
+
+Remainder.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MdiAppProject
+{
+	public class Reminder
+	{
+		public string Message { get; set; }
+	}
+}
+
+RemainderAndNotificationsWindow.xaml
+<Window x:Class="MdiAppProject.RemindersAndNotificationsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="RemindersAndNotificationsWindow" Height="684" Width="800">
+    <Grid Margin="10">
+     <Grid.RowDefinitions>
+         <RowDefinition Height="3*" />
+         <RowDefinition Height="*" />
+     </Grid.RowDefinitions>
+
+     <!-- Reminders List -->
+     <GroupBox Header="Reminders" FontWeight="Bold" Margin="5" Grid.Row="0">
+         <ListBox x:Name="RemindersListBox">
+             <ListBox.ItemTemplate>
+                 <DataTemplate>
+                     <StackPanel>
+                         <TextBlock Text="{Binding Title}" FontWeight="Bold"/>
+                         <TextBlock Text="{Binding Message}" />
+                         <TextBlock Text="{Binding Date, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" FontStyle="Italic" Foreground="Gray"/>
+                     </StackPanel>
+                 </DataTemplate>
+             </ListBox.ItemTemplate>
+         </ListBox>
+     </GroupBox>
+
+     <!-- Reminder Settings -->
+     <GroupBox Header="Reminder Settings" FontWeight="Bold" Margin="5" Grid.Row="1">
+         <StackPanel Margin="5">
+             <StackPanel Orientation="Horizontal">
+                 <TextBlock Text="Frequency:" Width="100" VerticalAlignment="Center"/>
+                 <ComboBox x:Name="FrequencyComboBox" Width="150">
+                     <ComboBoxItem Content="Daily" />
+                     <ComboBoxItem Content="Weekly" />
+                     <ComboBoxItem Content="Monthly" />
+                 </ComboBox>
+             </StackPanel>
+
+             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                 <TextBlock Text="Preferred Time:" Width="100" VerticalAlignment="Center"/>
+                 <TextBox x:Name="PreferredTimeTextBox" Width="150" />
+             </StackPanel>
+
+				<Button Content="Save Settings" Width="100" Margin="0,10,0,0" HorizontalAlignment="Left" Background="CadetBlue" Foreground="white" />
+				<Button x:Name="btnCheckIn" Background="CadetBlue" Foreground="white" Content="Check In" Width="100" Click="btnCheckIn_Click" />
+
+			</StackPanel>
+     </GroupBox>
+ </Grid>
+
+</Window>
+
+ReportsWindow.xaml
+<Window x:Class="MdiAppProject.ReportsWindow" Template="{StaticResource WindowTemplate}"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="ReportsWindow" Height="450" Width="800">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+
+			<RowDefinition Height="Auto"/>
+
+			<RowDefinition Height="*"/>
+
+		</Grid.RowDefinitions>
+
+
+		<TextBlock x:Name="reportTitle" Text="Adherence Report"
+               FontSize="36" FontWeight="Bold"
+               Background="Crimson" Foreground="White"
+               HorizontalAlignment="Stretch" VerticalAlignment="Center"
+               Margin="20" TextAlignment="Center" Grid.Row="0"/>
+
+
+		<StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                VerticalAlignment="Center" Margin="20" Grid.Row="1">
+			<Button x:Name="exportPdfButton" Content="Export to PDF"
+                FontFamily="Georgia" Background="#FFBBABE0" Margin="10"/>
+			<Button x:Name="exportCsvButton" Content="Export to CSV"
+                FontFamily="Georgia" Background="#FFBBABE0" Margin="10"/>
+		</StackPanel>
+
+
+		<Grid Grid.Row="2" Margin="20" Background="#FFD96F6F">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="*"/>
+			</Grid.RowDefinitions>
+			<TextBlock x:Name="pageTitle" Text="Reports"
+                   FontFamily="Georgia" FontSize="18"
+                   Background="#FFD96F6F" Foreground="White"
+                   HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                   Padding="10" Grid.Row="0"/>
+			<DataGrid x:Name="reportDataGrid" AutoGenerateColumns="True"
+                  Margin="10" Background="#FFC8A8C9" Grid.Row="1"/>
+		</Grid>
+	</Grid>
+
+</Window>
+
+SettingsWindow.xaml
+<Window x:Class="MdiAppProject.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="SettingsWindow" Height="450" Width="800">
+	<Grid Margin="0,0,0,1">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+
+
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="200"/>
+			<ColumnDefinition Width="*"/>
+		</Grid.ColumnDefinitions>
+
+		<TextBlock TextAlignment ="Center" TextWrapping="Wrap" Text="SETTINGS PAGE "
+                Width="799" Height="62" FontSize="36" FontWeight="Bold"
+                Background="Wheat" FontFamily="Georgia" Grid.Row="0" Grid.ColumnSpan="2" VerticalAlignment="Center" IsEnabled="False"/>
+		<StackPanel Grid.Column="1" Grid.Row="2" Margin="10">
+			<TextBlock FontSize="14">Notification Frequency:</TextBlock>
+			<ComboBox>
+				<ComboBoxItem>Real-time</ComboBoxItem>
+				<ComboBoxItem>Hourly</ComboBoxItem>
+				<ComboBoxItem>Daily</ComboBoxItem>
+			</ComboBox>
+			<TextBlock FontSize="14">Reminder Methods:</TextBlock>
+			<CheckBox Content="Email"/>
+			<CheckBox Content="SMS"/>
+			<CheckBox Content="App Notification"/>
+		</StackPanel>
+
+		<!-- Time Zone Settings -->
+		<TextBlock Grid.Column="0" Grid.Row="1" Margin="10" FontWeight="Bold" FontSize="18" >Time Zone Settings</TextBlock>
+		<StackPanel Grid.Column="1" Grid.Row="1" Margin="10">
+			<TextBlock   FontSize="14"  >Time Zone:</TextBlock>
+			<ComboBox>
+				<ComboBoxItem>UTC-12</ComboBoxItem>
+				<ComboBoxItem>UTC-11</ComboBoxItem>
+				<ComboBoxItem>UTC-10</ComboBoxItem>
+				<!-- Add more time zones as needed -->
+			</ComboBox>
+		</StackPanel>
+
+		<!-- Privacy Settings -->
+		<TextBlock Grid.Column="0" Grid.Row="4" Margin="10"  FontWeight="Bold" FontSize="18" >Privacy Settings</TextBlock>
+		<StackPanel Grid.Column="1" Grid.Row="4" Margin="10">
+			<TextBlock FontSize="14">Share Data with:</TextBlock>
+			<CheckBox Content="Team Members"/>
+			<CheckBox Content="Organization"/>
+			<CheckBox Content="Third-party Services"/>
+		</StackPanel>
+
+		<!-- Save and Cancel Buttons -->
+		<StackPanel Grid.Column="1" Grid.Row="5" Margin="364,10,0,10" Orientation="Horizontal" HorizontalAlignment="Left" Width="196" >
+
+			<Button Content="Save"  Width="90" Height="42" Background="CadetBlue" Foreground="White" FontWeight="Bold" FontSize="18" />
+			<Button Content="Cancel" Margin="10"  Width="90" Height="44" Background="CadetBlue" Foreground="White" FontWeight="Bold" FontSize="18" />
+		</StackPanel>
+
+	</Grid>
+</Window>
+
+SignUpWindow.xaml
+<Window x:Class="MdiAppProject.SignUpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdiAppProject"
+        mc:Ignorable="d"
+        Title="Sign Up" Height="550" Width="800" Closing="Window_Closing">
+	<Window.Background>
+		<ImageBrush ImageSource="/docSys.jpeg"/>
+	</Window.Background>
+	<Border CornerRadius="40" Width="400" Height='450'  HorizontalAlignment="Center" VerticalAlignment="Center" BorderThickness="1" BorderBrush="Black" Background="Lavender"   >
+
+		<Canvas Background="Lavender">
+			<TextBlock Height="46" Canvas.Left="124" TextWrapping="Wrap" Text="Sign Up" Canvas.Top="18" Width="148" FontSize="36" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Georgia"/>
+			<TextBlock x:Name="lblName" Height="26" Canvas.Left="34" TextWrapping="Wrap" Text="Name" Canvas.Top="155" Width="97" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Georgia" FontSize="16"/>
+			<TextBlock x:Name="lblEmail" Height="26" Canvas.Left="34" TextWrapping="Wrap" Text="Email" Canvas.Top="201" Width="97" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Georgia" FontSize="16"/>
+			<TextBlock x:Name="lblPassword" Height="26" Canvas.Left="34" TextWrapping="Wrap" Text="Password" Canvas.Top="249" Width="97" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Georgia" FontSize="16"/>
+			<TextBlock x:Name="lblDateOfBirth" Height="26" Canvas.Left="34" TextWrapping="Wrap" Text="Date  of Birth" Canvas.Top="301" Width="97" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Georgia" FontSize="16"/>
+			<Image Height="73" Canvas.Left="159" Canvas.Top="64" Width="75" Source="/userLoginIcon.png" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Fill"/>
+			<TextBlock x:Name="lblMedicalHistory" Height="26" Canvas.Left="34" TextWrapping="Wrap" Text="Medical History" Canvas.Top="359" Width="135" FontFamily="Georgia" FontSize="16" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+			<TextBox x:Name="txtName" Height="26" Canvas.Left="174" TextWrapping="Wrap" Text="Collin" Canvas.Top="155" Width="214" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+			<TextBox x:Name="txtEmail" Height="26" Canvas.Left="174" TextWrapping="Wrap" Text="collinfrancy1212@gmail.com" Canvas.Top="198" Width="214" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+			<TextBox x:Name="txtPassword" Height="26" Canvas.Left="173" TextWrapping="Wrap" Text="123" Canvas.Top="249" Width="215" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+			<TextBox x:Name="txtDateOfBirth" Height="26" Canvas.Left="173" TextWrapping="Wrap" Text="01-01-2024" Canvas.Top="301" Width="215" HorizontalAlignment="Left" VerticalAlignment="Center" />
+			<TextBox x:Name="txtMedicalHistory" Height="26" Canvas.Left="174" TextWrapping="Wrap" Text="diabetes" Canvas.Top="359" Width="214" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+			<Button x:Name="btnSignUp" Content="Sign Up" Height="30" Canvas.Left="281" Canvas.Top="403" Width="80" HorizontalAlignment="Left" VerticalAlignment="Center"  Background="CadetBlue" Foreground="White"/>
+			<TextBlock Height="29" Canvas.Left="10" TextWrapping="Wrap" Text="Already have an  account?  "   Width="190" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF181947" Canvas.Top="416"/>
+			<Button x:Name="lblLogin" Height="17" Content="Login"  Width="47" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF070DF1" Canvas.Left="153" Canvas.Top="416" Background="#FFEEEEEE" Click="lblLogin_Click" />
+		</Canvas>
+	</Border>
+</Window>
+
+
+
+
+
+
+
